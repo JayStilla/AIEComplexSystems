@@ -88,6 +88,7 @@ void Networking_Client::onUpdate(float a_deltaTime)
 	}
 
 	RakNet::Packet* packet = m_raknet->Receive(); 
+
 	while (packet != nullptr)
 	{
 		//process
@@ -96,20 +97,96 @@ void Networking_Client::onUpdate(float a_deltaTime)
 		case ID_CONNECTION_REQUEST_ACCEPTED:
 			{
 				printf("Connected\n");
-				m_serverAddress = packet->systemAddress; 
+				m_serverAddress = packet->systemAddress;
+
 				break; 
 			}
 
 		case ID_USER_ID:
 			{
-						   RakNet::BitStream input(packet->data, packet->length, true);
+				RakNet::BitStream input(packet->data, packet->length, true);
+				input.IgnoreBytes(1); 
 
+				input.Read(m_myID); 
+				m_players[m_myID] = glm::vec3(0);
+
+				printf("my ID: %i\n", m_myID); 
+
+				int id = -1; 
+				while (input.Read(id))
+				{
+					m_players[id] = glm::vec3(0);
+				}
+
+				break; 
 			}
+		case ID_USER_NEW_CLIENT:
+			{
+				RakNet::BitStream input(packet->data, packet->length, true);
+				input.IgnoreBytes(1);
+				int id = -1; 
+				input.Read(id);
+				printf("New player connected: %i\n", id);
+				m_players[id] = glm::vec3(0);
+				break;
+			}
+		case ID_USER_CLIENT_DISCONNECTED:
+			{
+				RakNet::BitStream input(packet->data, packet->length, true);
+				input.IgnoreBytes(1);
+				int id = -1;
+				input.Read(id);
+				printf("Player disconnected: %i\n", id);
+
+				m_players.erase(m_players.find(id));
+				break;
+			}
+		case ID_USER_POSITION:
+			{
+				RakNet::BitStream input(packet->data, packet->length, true);
+				input.IgnoreBytes(1);
+				int id = -1;
+				input.Read(id);
+				glm::vec3 pos(0);
+				input.Read(pos); 
+				m_players[id] = pos; 
+				break;
+			}
+
 		};
 		//get next
 		m_raknet->DeallocatePacket(packet); 
 		packet = m_raknet->Receive(); 
 	}
+
+	if (m_myID != -1)
+	{
+		glm::vec3 movement(0); 
+		if (glfwGetKey(m_window, GLFW_KEY_UP) == GLFW_PRESS)
+			movement.z -= 1; 
+		if (glfwGetKey(m_window, GLFW_KEY_DOWN) == GLFW_PRESS)
+			movement.z += 1;
+		if (glfwGetKey(m_window, GLFW_KEY_LEFT) == GLFW_PRESS)
+			movement.x -= 1;
+		if (glfwGetKey(m_window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+			movement.x += 1;
+
+		if (glm::length2(movement) > 0)
+		{
+			m_players[m_myID] = m_players[m_myID] + glm::normalize(movement) * a_deltaTime * 5.0f; 
+
+			RakNet::BitStream output; 
+			output.Write((unsigned char)ID_USER_POSITION); 
+			output.Write(m_myID); 
+			output.Write(m_players[m_myID]);
+
+			m_raknet->Send(&output, HIGH_PRIORITY)
+		}
+
+	}
+
+	for (auto&player : m_players)
+		Gizmos::addAABBFilled(player.second, glm::vec3(0.5f), glm::vec4(1, 1, 0, 1));
 
 	// quit our application when escape is pressed
 	if (glfwGetKey(m_window,GLFW_KEY_ESCAPE) == GLFW_PRESS)
