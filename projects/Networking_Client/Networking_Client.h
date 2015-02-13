@@ -24,7 +24,7 @@ protected:
 	int m_myID;
 	std::map<int, glm::vec3> m_players; 
 
-	RakNet::SystemAddress* m_serverAddress; 
+	RakNet::SystemAddress m_serverAddress; 
 	RakNet::RakPeerInterface* m_raknet; 
 
 	glm::mat4	m_cameraMatrix;

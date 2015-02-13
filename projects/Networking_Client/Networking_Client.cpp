@@ -19,7 +19,7 @@ enum MESSAGE_ID
 
 	ID_USER_CUSTOM_DATA,
 
-	ID_USER_POSITION = ID_USER_CUSTOM_DATA
+	ID_USER_POSITION = ID_USER_CUSTOM_DATA,
 };
 
 const int SERVER_PORT = 12001;
@@ -180,7 +180,7 @@ void Networking_Client::onUpdate(float a_deltaTime)
 			output.Write(m_myID); 
 			output.Write(m_players[m_myID]);
 
-			m_raknet->Send(&output, HIGH_PRIORITY)
+			m_raknet->Send(&output, HIGH_PRIORITY, RELIABLE_ORDERED, 0, m_serverAddress, false);
 		}
 
 	}
